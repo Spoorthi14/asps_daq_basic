@@ -14,6 +14,11 @@ public:
 	void stop();
 	void handle();
 	typedef struct _PTPMsg PTPMsg;
+        typedef struct _AnnounceMsg AnnounceMsg;
+        typedef struct _SyncMsg SyncMsg;
+        typedef struct _FollowupMsg FollowupMsg;
+        typedef struct _TimeStamp TimeStamp;
+        typedef struct _ClockQuality ClockQuality;
       
 private:
 	EthernetUDP _general;
