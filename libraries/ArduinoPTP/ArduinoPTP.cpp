@@ -12,25 +12,28 @@ int v3=0;//0 if debugging is off.
 int v4=1;//0 if debugging is off.
 int globalCountgeneral = 0; //keep track of number of general packets.
 int globalCountevent = 0; //keep track of number of event packets.
-
-
+int k=0; 
+int i=0;
+char timestamp[6];
 struct _PTPMsg {
 		uint16_t sourcePortID;
 		uint8_t version;
 		uint8_t domain;
-		long clockID;
+		//long long clockID;
+		uint8_t clockID[8];
 		unsigned int transportSpecific; 
 		unsigned int type; 
 		uint16_t length;
 		uint16_t flags;
-		long correction;
+		long long correction;
+		char correction1[8];
 		uint16_t sequenceID;
 		uint8_t control;
 		uint8_t log_period; 
 } PTPMsg;
 
 struct _TimeStamp {
-	long seconds; 
+	long long seconds; 
 	uint32_t nanoseconds; 
 	
 } TimeStamp;
@@ -43,7 +46,7 @@ struct _ClockQuality {
 
 struct _AnnounceMsg{
 	struct _TimeStamp originTimestamp;
-	long clockID;
+	uint8_t clockID[8];
 	uint16_t currentUtcOffset;
 	uint8_t grandmasterPriority1;
 	uint8_t grandmasterPriority2;
@@ -111,9 +114,22 @@ void ArduinoPTP::handle() {
 			PTPMsg.sequenceID=(buffer[30] << 8) | buffer[31];
 			PTPMsg.control=buffer[32];
 			PTPMsg.log_period=buffer[33];
+			/*i=0;
+            for (k=8;k<16;k++)
+			{
+				PTPMsg.correction[i]=buffer[k];
+				i++;
+			}*/
+			i=0;
+			for(k=20;k<28;k++)
+			{
+				PTPMsg.clockID[i]=buffer[k];
+				i++;
+			}
 			PTPMsg.correction=(buffer[8] << 56) | (buffer[9] << 48) | (buffer[10] << 40) | (buffer[11] << 32) | (buffer[12] << 24) | (buffer[13] << 16) | (buffer[14] << 8) | (buffer[15]);
-			PTPMsg.clockID =(buffer[20] << 56) | (buffer[21] << 48) | (buffer[22] << 40) | (buffer[23] << 32) | (buffer[24] << 24) | (buffer[25] << 16) | (buffer[26] << 8) | (buffer[27]);
-				
+			//PTPMsg.clockID =(buffer[20] << 56) | (buffer[21] << 48) | (buffer[22] << 40) | (buffer[23] << 32) | (buffer[24] << 24) | (buffer[25] << 16) | (buffer[26] << 8) | (buffer[27]);
+			itoa(PTPMsg.correction,PTPMsg.correction1,10);
+			//itoa(PTPMsg.clockID,PTPMsg.clockID1,10);
 			
 			
 			if (v1)
@@ -126,7 +142,7 @@ void ArduinoPTP::handle() {
 				Serial.print(" ");
 			}
 			}
-			if (v4)
+			if (v2)
 			{
 				Serial.print("Printing Version info general:");
 				Serial.print(PTPMsg.version);
@@ -159,24 +175,49 @@ void ArduinoPTP::handle() {
 				Serial.print(PTPMsg.log_period);
 				Serial.println("");
 				Serial.print("Printing clock info general:");
-				Serial.println(PTPMsg.clockID,HEX);
+				for(k=0;k<8;k++)
+				{
+					Serial.print(PTPMsg.clockID[k],HEX);
+				}
+				Serial.println("");
+				//Serial.println("%02x02x02x02x02x02x02x02x",PTPMsg.clockID1);
+				//Serial.print("Size of clockid:");
+				//Serial.println(sizeof(PTPMsg.clockID));
 				Serial.print("Printing correction info general:");
-				Serial.println(PTPMsg.correction);
+				Serial.println(PTPMsg.correction1);
+				/*for(k=0;k<8;k++)
+				{
+					Serial.print(PTPMsg.correction[k]);
+				}
+				Serial.println("");*/
+				Serial.print("Size of correction:");
+				
+				Serial.println(sizeof(PTPMsg.correction));
 				
 				
 			}
 			if (packetSize==44)
 			{
+				//long bigNumber = (buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+				//FollowupMsg.preciseOriginTimestamp.seconds = bigNumber.toString();
 			    FollowupMsg.preciseOriginTimestamp.seconds = (buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 				FollowupMsg.preciseOriginTimestamp.nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+				itoa(FollowupMsg.preciseOriginTimestamp.seconds,timestamp,10);
 				
-				if(v4)
+				if(v2)
 			{
 				//Serial.print(packetSize);
-				Serial.print("Printing follow-up timestamp:");
-				Serial.println(FollowupMsg.preciseOriginTimestamp.seconds);
+				Serial.print("Printing follow-up timestamp (seconds):");
+				Serial.println(timestamp);
+				Serial.print("Size of seconds timestamp:");
+				Serial.println(sizeof(FollowupMsg.preciseOriginTimestamp.seconds));
+				Serial.print("Printing follow-up timestamp (nanoseconds)");
 				Serial.println(FollowupMsg.preciseOriginTimestamp.nanoseconds);
 			}
+			}
+			else
+			{
+				
 			}
 			
 			
@@ -229,9 +270,21 @@ void ArduinoPTP::handle() {
 			PTPMsg.sequenceID=(buffer[30] << 8) | buffer[31];
 			PTPMsg.control=buffer[32];
 			PTPMsg.log_period=buffer[33];
+			//i=0;
+           /* for (k=8;k<16;k++)
+			{
+				PTPMsg.correction[i]=buffer[k];
+				i++;
+			}*/
+			i=0;
+			for(k=20;k<28;k++)
+			{
+				PTPMsg.clockID[i]=buffer[k];
+				i++;
+			}
 			PTPMsg.correction=(buffer[8] << 56) | (buffer[9] << 48) | (buffer[10] << 40) | (buffer[11] << 32) | (buffer[12] << 24) | (buffer[13] << 16) | (buffer[14] << 8) | (buffer[15]);
-			PTPMsg.clockID =(buffer[20] << 56) | (buffer[21] << 48) | (buffer[22] << 40) | (buffer[23] << 32) | (buffer[24] << 24) | (buffer[25] << 16) | (buffer[26] << 8) | (buffer[27]);
-			
+			//PTPMsg.clockID =(buffer[20] << 56) | (buffer[21] << 48) | (buffer[22] << 40) | (buffer[23] << 32) | (buffer[24] << 24) | (buffer[25] << 16) | (buffer[26] << 8) | (buffer[27]);
+			itoa(PTPMsg.correction,PTPMsg.correction1,10);
 			if (v4)
 			{
 				Serial.print("Printing Version info event:");
@@ -264,11 +317,39 @@ void ArduinoPTP::handle() {
 				Serial.print("Printing log period info event:");
 				Serial.print(PTPMsg.log_period);
 				Serial.println("");
-				Serial.print("Printing clock info event:");
-				Serial.println(PTPMsg.clockID,HEX);
-				Serial.print("Printing correction info event:");
-				Serial.println(PTPMsg.correction);
+				Serial.print("Printing clock info general:");
+				for(k=0;k<8;k++)
+				{
+					Serial.print(PTPMsg.clockID[k],HEX);
+				}
+				Serial.println("");
+				//Serial.print("Size of clockid:");
+				//Serial.println(sizeof(PTPMsg.clockID));
+				Serial.print("Printing correction info general:");
+				Serial.println(PTPMsg.correction1);
+				/*for(k=0;k<8;k++)
+				{
+					Serial.print(PTPMsg.correction[k]);
+				}
+				Serial.println("");*/
+				Serial.print("Size of correction:");
+				Serial.println(sizeof(PTPMsg.correction));
 				
+				
+			}
+			SyncMsg.originTimestamp.seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+			SyncMsg.originTimestamp.nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+			itoa(SyncMsg.originTimestamp.seconds,timestamp,10);
+			
+			if(v4)
+			{
+				//Serial.print(packetSize);
+				Serial.print("Printing sync timestamp (seconds):");
+				Serial.println(timestamp);
+				Serial.print("Size of seconds timestamp:");
+				Serial.println(sizeof(SyncMsg.originTimestamp.seconds));
+				Serial.print("Printing sync timestamp (nanoseconds)");
+				Serial.println(SyncMsg.originTimestamp.nanoseconds);
 			}
 			
 			if (v1)
