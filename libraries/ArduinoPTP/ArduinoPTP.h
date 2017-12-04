@@ -13,6 +13,7 @@ public:
 	uint8_t begin();
 	void stop();
 	void handle();
+	void packMsg();
 	typedef struct _PTPMsg PTPMsg;
         typedef struct _AnnounceMsg AnnounceMsg;
         typedef struct _SyncMsg SyncMsg;

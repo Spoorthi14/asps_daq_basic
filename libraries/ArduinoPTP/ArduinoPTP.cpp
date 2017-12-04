@@ -15,6 +15,8 @@ int globalCountevent = 0; //keep track of number of event packets.
 int k=0; 
 int i=0;
 char timestamp[6];
+//IPAddress ip(192,168,1,177);
+IPAddress remoteIP;
 struct _PTPMsg {
 		uint16_t sourcePortID;
 		uint8_t version;
@@ -81,6 +83,7 @@ void ArduinoPTP::handle() {
 	struct _FollowupMsg FollowupMsg;
 	struct _SyncMsg SyncMsg;
 	packetSize = _general.parsePacket();
+	
 	//Serial.println("packet size:%d", packetSize);
 	if (packetSize) {
 		// Do something to handle general packets.
@@ -98,7 +101,7 @@ void ArduinoPTP::handle() {
 			}
 			if (packetSize==44)
 			packetByte = _general.read(buffer,44);
-		    else
+		    else if (packetSize==64)
 		    packetByte = _general.read(buffer,64);
 			if (v1)
 			{
@@ -196,7 +199,7 @@ void ArduinoPTP::handle() {
 				
 				
 			}
-			if (packetSize==44)
+			if (packetSize==44 && PTPMsg.control == 2)
 			{
 				//long bigNumber = (buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 				//FollowupMsg.preciseOriginTimestamp.seconds = bigNumber.toString();
@@ -215,8 +218,52 @@ void ArduinoPTP::handle() {
 				Serial.println(FollowupMsg.preciseOriginTimestamp.nanoseconds);
 			}
 			}
-			else
+			else if (packetSize==64 && PTPMsg.control == 5)
 			{
+				AnnounceMsg.originTimestamp.seconds = (buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+				AnnounceMsg.originTimestamp.nanoseconds = (buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+				itoa(AnnounceMsg.originTimestamp.seconds,timestamp,10);
+				AnnounceMsg.currentUtcOffset = (buffer[44] << 8)|(buffer[45]);
+				AnnounceMsg.grandmasterPriority1=buffer[47];
+				AnnounceMsg.grandmasterPriority2=buffer[52];
+				AnnounceMsg.stepsRemoved=(buffer[61] << 8)|buffer[62];
+				AnnounceMsg.TimeSource=buffer[63];
+				AnnounceMsg.masterClockQuality.clockClass=buffer[48];
+				AnnounceMsg.masterClockQuality.clockAccuracy=buffer[49];
+				AnnounceMsg.masterClockQuality.clockVariance=(buffer[50] << 8)|buffer[51];
+				k=0;
+				for(i=53;i<61;i++)
+				{
+					AnnounceMsg.clockID[k]=buffer[i];
+					k++;
+				}
+				if(v1)
+				{
+					Serial.print("Announce timestamp seconds:");
+					Serial.println(timestamp);
+					Serial.print("Announce timestamp nanoseconds:");
+					Serial.println(AnnounceMsg.originTimestamp.nanoseconds);
+					Serial.print("Announce timestamp utc offset:");
+					Serial.println(AnnounceMsg.currentUtcOffset);
+					Serial.print("Announce timestamp priority 1:");
+					Serial.println(AnnounceMsg.grandmasterPriority1);
+					Serial.print("Announce timestamp priority 2:");
+					Serial.println(AnnounceMsg.grandmasterPriority2);
+					Serial.print("Announce timestamp steps removed:");
+					Serial.println(AnnounceMsg.stepsRemoved);
+					Serial.print("Announce timestamp time source:");
+					Serial.println(AnnounceMsg.TimeSource,HEX);
+					Serial.print("Announce timestamp clock class:");
+					Serial.println(AnnounceMsg.masterClockQuality.clockClass);
+					Serial.print("Announce timestamp clock accuracy:");
+					Serial.println(AnnounceMsg.masterClockQuality.clockAccuracy,HEX);
+					Serial.print("Announce clock id");
+					for(i=0;i<8;i++)
+					{
+						Serial.print(AnnounceMsg.clockID[i],HEX);
+					}
+				Serial.println("");
+				}
 				
 			}
 			
@@ -236,8 +283,11 @@ void ArduinoPTP::handle() {
 	}
 
 	packetSize = _event.parsePacket();
+	
 	if  (packetSize) {
 		// Do something to handle event packets
+		remoteIP=_event.remoteIP();
+	    packMsg();
 		if (v0)
 		{
 		Serial.println("It is working");
@@ -285,7 +335,7 @@ void ArduinoPTP::handle() {
 			PTPMsg.correction=(buffer[8] << 56) | (buffer[9] << 48) | (buffer[10] << 40) | (buffer[11] << 32) | (buffer[12] << 24) | (buffer[13] << 16) | (buffer[14] << 8) | (buffer[15]);
 			//PTPMsg.clockID =(buffer[20] << 56) | (buffer[21] << 48) | (buffer[22] << 40) | (buffer[23] << 32) | (buffer[24] << 24) | (buffer[25] << 16) | (buffer[26] << 8) | (buffer[27]);
 			itoa(PTPMsg.correction,PTPMsg.correction1,10);
-			if (v4)
+			if (v1)
 			{
 				Serial.print("Printing Version info event:");
 				Serial.print(PTPMsg.version);
@@ -317,7 +367,7 @@ void ArduinoPTP::handle() {
 				Serial.print("Printing log period info event:");
 				Serial.print(PTPMsg.log_period);
 				Serial.println("");
-				Serial.print("Printing clock info general:");
+				Serial.print("Printing clock info event:");
 				for(k=0;k<8;k++)
 				{
 					Serial.print(PTPMsg.clockID[k],HEX);
@@ -325,33 +375,35 @@ void ArduinoPTP::handle() {
 				Serial.println("");
 				//Serial.print("Size of clockid:");
 				//Serial.println(sizeof(PTPMsg.clockID));
-				Serial.print("Printing correction info general:");
+				Serial.print("Printing correction info event:");
 				Serial.println(PTPMsg.correction1);
 				/*for(k=0;k<8;k++)
 				{
 					Serial.print(PTPMsg.correction[k]);
 				}
 				Serial.println("");*/
-				Serial.print("Size of correction:");
-				Serial.println(sizeof(PTPMsg.correction));
+				//Serial.print("Size of correction:");
+				//Serial.println(sizeof(PTPMsg.correction));
 				
 				
 			}
+			if (PTPMsg.control ==0)
+			{
 			SyncMsg.originTimestamp.seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 			SyncMsg.originTimestamp.nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
 			itoa(SyncMsg.originTimestamp.seconds,timestamp,10);
 			
-			if(v4)
+			if(v1)
 			{
 				//Serial.print(packetSize);
 				Serial.print("Printing sync timestamp (seconds):");
 				Serial.println(timestamp);
-				Serial.print("Size of seconds timestamp:");
-				Serial.println(sizeof(SyncMsg.originTimestamp.seconds));
+				//Serial.print("Size of seconds timestamp:");
+				//Serial.println(sizeof(SyncMsg.originTimestamp.seconds));
 				Serial.print("Printing sync timestamp (nanoseconds)");
 				Serial.println(SyncMsg.originTimestamp.nanoseconds);
 			}
-			
+			}
 			if (v1)
 			{
 			for (int i=0;i<44;i++)
@@ -400,5 +452,10 @@ void ArduinoPTP::handle() {
 		
 }
 }
+}
+
+void ArduinoPTP::packMsg() {
+	Serial.print("Remote IP:");
+	Serial.println(remoteIP);
 }
 
