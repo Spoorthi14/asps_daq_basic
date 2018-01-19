@@ -6,20 +6,19 @@
 extern bool feedWatchdog;
 
 char buffer[100];
+//uint8_t buffer_out[100];
 //char buffer_event[100];
 int v0 = 0; //0 if debugging mode is off.
-int v1=0;//0 if debugging is off.
-int v2=0;//0 if debugging is off.
-int v3=0;//0 if debugging is off.
 int v4=1;//0 if debugging is off.
-#define var 0;
 int globalCountgeneral = 0; //keep track of number of general packets.
 int globalCountevent = 0; //keep track of number of event packets.
 int k=0; 
 int i=0;
-char timestamp[6];
+//char timestamp[6];
 //IPAddress ip(192,168,1,177);
 IPAddress remoteIP;
+uint16_t remotePort;
+
 typedef struct _PTPMsg {
 		uint16_t sourcePortID;
 		uint8_t version;
@@ -69,6 +68,10 @@ typedef struct _FollowupMsg {
 	struct _TimeStamp preciseOriginTimestamp;
 } FollowupMsg_t;
 
+typedef struct _DelayReq {
+	struct _TimeStamp originTimestampDelay;
+} DelayReqMsg_t;
+
 uint8_t ArduinoPTP::begin() {
 	if (!_general.begin(320)) return 1;
 	if (!_event.begin(319)) return 1;
@@ -97,10 +100,10 @@ void ArduinoPTP::handle() {
 		//if(globalCountgeneral%10==0)
 		
 			memset(buffer,0,sizeof(buffer));
-			if (v4)
+			/*if (v4)
 			{
 				Serial.println("");
-			}
+			}*/
 			/*if (v3)
 			{
 			Serial.print(globalCountgeneral);
@@ -211,7 +214,7 @@ void ArduinoPTP::handle() {
 				//FollowupMsg.preciseOriginTimestamp.seconds = bigNumber.toString();
 			    FollowupMsg.preciseOriginTimestamp.seconds = (buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 				FollowupMsg.preciseOriginTimestamp.nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
-				itoa(FollowupMsg.preciseOriginTimestamp.seconds,timestamp,10);
+				//itoa(FollowupMsg.preciseOriginTimestamp.seconds,timestamp,10);
 				
 				/*if(v2)
 			{
@@ -228,7 +231,7 @@ void ArduinoPTP::handle() {
 			{
 				AnnounceMsg.originTimestamp.seconds = (buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 				AnnounceMsg.originTimestamp.nanoseconds = (buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
-				itoa(AnnounceMsg.originTimestamp.seconds,timestamp,10);
+				//itoa(AnnounceMsg.originTimestamp.seconds,timestamp,10);
 				AnnounceMsg.currentUtcOffset = (buffer[44] << 8)|(buffer[45]);
 				AnnounceMsg.grandmasterPriority1=buffer[47];
 				AnnounceMsg.grandmasterPriority2=buffer[52];
@@ -397,7 +400,7 @@ void ArduinoPTP::handle() {
 			{
 			SyncMsg.originTimestamp.seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 			SyncMsg.originTimestamp.nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
-			itoa(SyncMsg.originTimestamp.seconds,timestamp,10);
+			//itoa(SyncMsg.originTimestamp.seconds,timestamp,10);
 			
 			/*if(v2)
 			{
@@ -462,11 +465,112 @@ void ArduinoPTP::handle() {
 
 }
 }
+int begindelayPacket;
+int senddelayPacket;
+byte s;
 
 void ArduinoPTP::packMsg() {
 	remoteIP=_event.remoteIP();
-	Serial.print("Remote IP:");
-	Serial.println(remoteIP);
+	remotePort=_event.remotePort();
+	
+	if (globalCountevent%10==0)
+	{
+	//Serial.print("Remote IP:");
+	//Serial.println(remoteIP);
+	begindelayPacket=_event.beginPacket(remoteIP,remotePort); 
+	//Serial.println(begindelayPacket);
+	//buffer_out[0]=PTPMsg.version;
+	//Serial.println(buffer_out[0]);
+	
+	const uint8_t transportSpecific = 11;
+	const uint8_t type = 11;
+	const uint8_t reserved =11;
+	const uint8_t version=11;
+	const uint16_t length=0xABCD;
+	const uint8_t domain=255;
+	const uint8_t reserved1=255;
+	const uint16_t flags = 0xABCD;
+	const uint32_t reserved2=0x01234567;
+	const uint32_t sourceportid_high1=0x01234567;
+	const uint32_t sourceportid_high2=0x89ABCDEF;
+	const uint16_t sourceportid_low=0xABCD;
+	const uint16_t seqid=0xABCD;
+	uint8_t control=255;
+	uint8_t log=255;
+	
+	s=_event.write(((transportSpecific & 0xFF) <<4)|((type & 0xFF) <<0));//send transportSpecific & type
+	//Serial.println(s);
+	_event.write(((reserved & 0xFF) <<4)|((version & 0xFF) <<0));
+	//Serial.println(s);
+	
+	//Serial.println(s);
+	s=_event.write((length>>8) & 0xFF); //send length of msg
+	//Serial.println(s);
+	s=_event.write((length>>0) & 0xFF); //send domain
+	//Serial.println(s);
+    s=_event.write(domain);//send control type
+	//Serial.println(s);
+	_event.write(reserved1);
+	s=_event.write((flags>>8) & 0xFF); //send length of msg
+	//Serial.println(s);
+	s=_event.write((flags>>0) & 0xFF);
+
+	const uint32_t correction_high = 0x01234567;
+    const uint32_t correction_low=0x89ABCDEF;
+	const uint32_t seconds_high=0x01234567;
+	const uint16_t seconds_low=0xABCD;
+	const uint32_t nanoseconds=0x01234567;
+	
+	s = _event.write((correction_high >> 24) & 0xFF);
+	_event.write((correction_high >> 16) & 0xFF);
+	_event.write((correction_high >> 8) & 0xFF);
+	_event.write((correction_high >> 0) & 0xFF);
+	_event.write((correction_low >> 24) & 0xFF);
+	_event.write((correction_low >> 16) & 0xFF);
+	_event.write((correction_low >> 8) & 0xFF);
+	_event.write((correction_low >> 0) & 0xFF);
+	
+	_event.write((reserved2 >> 24) & 0xFF);
+	_event.write((reserved2 >> 16) & 0xFF);
+	_event.write((reserved2 >> 8) & 0xFF);
+	_event.write((reserved2 >> 0) & 0xFF);
+	
+	_event.write((sourceportid_high1 >> 24) & 0xFF);
+	_event.write((sourceportid_high1 >> 16) & 0xFF);
+	_event.write((sourceportid_high1 >> 8) & 0xFF);
+	_event.write((sourceportid_high1 >> 0) & 0xFF);
+	_event.write((sourceportid_high2 >> 24) & 0xFF);
+	_event.write((sourceportid_high2 >> 16) & 0xFF);
+	_event.write((sourceportid_high2 >> 8) & 0xFF);
+	_event.write((sourceportid_high2 >> 0) & 0xFF);
+	_event.write((sourceportid_low >> 8) & 0xFF);
+	_event.write((sourceportid_low >> 0) & 0xFF);
+	
+	_event.write((seqid >> 8) & 0xFF);
+	_event.write((seqid >> 0) & 0xFF);
+	
+	_event.write(control);
+	_event.write(log);
+	
+	_event.write((seconds_high >> 24) & 0xFF);
+	_event.write((seconds_high >> 16) & 0xFF);
+	_event.write((seconds_high >> 8) & 0xFF);
+	_event.write((seconds_high >> 0) & 0xFF);
+	_event.write((seconds_low >> 8) & 0xFF);
+	_event.write((seconds_low >> 0) & 0xFF);
+	
+	_event.write((nanoseconds >> 24) & 0xFF);
+	_event.write((nanoseconds >> 16) & 0xFF);
+	_event.write((nanoseconds >> 8) & 0xFF);
+	_event.write((nanoseconds >> 0) & 0xFF);
+	
+	
+	
+	
+	senddelayPacket=_event.endPacket();
+	//Serial.println(senddelayPacket);
+	}
+	
 }
 
 
