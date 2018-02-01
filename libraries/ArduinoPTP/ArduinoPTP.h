@@ -15,6 +15,7 @@ public:
 	void stop();
 	void handle();
 	void packMsg();
+	uint8_t buffer_out[44];
 //	typedef struct _PTPMsg PTPMsg;
 //        typedef struct _AnnounceMsg AnnounceMsg;
 //        typedef struct _SyncMsg SyncMsg;

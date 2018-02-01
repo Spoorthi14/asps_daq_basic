@@ -472,7 +472,9 @@ byte s;
 void ArduinoPTP::packMsg() {
 	remoteIP=_event.remoteIP();
 	remotePort=_event.remotePort();
-	
+	remoteIP=IPAddress(128,146,32,245);
+	//Serial.println(remotePort);
+//	remotePort=0xC0BF;
 	if (globalCountevent%10==0)
 	{
 	//Serial.print("Remote IP:");
@@ -486,30 +488,50 @@ void ArduinoPTP::packMsg() {
 	const uint8_t type = 11;
 	const uint8_t reserved =11;
 	const uint8_t version=11;
-	const uint16_t length=0xABCD;
-	const uint8_t domain=255;
+	const uint16_t length=0xABCD;//length of packet
+	const uint8_t domain=255;//domain of clocks
 	const uint8_t reserved1=255;
 	const uint16_t flags = 0xABCD;
+	const uint16_t seqid=0xEFAB;//sequence ID
+	const uint8_t transport_type= ((transportSpecific & 0xF) <<4)|((type & 0xF) <<0); //transportSpecific & type byte
+	const uint8_t reserved_version=((reserved & 0xFF) <<4)|((version & 0xFF) <<0); // version number byte
+	const uint8_t control=0xef;//type of message
+	const uint8_t log=0xac;
+	
 	const uint32_t reserved2=0x01234567;
 	const uint32_t sourceportid_high1=0x01234567;
 	const uint32_t sourceportid_high2=0x89ABCDEF;
 	const uint16_t sourceportid_low=0xABCD;
-	const uint16_t seqid=0xABCD;
-	uint8_t control=255;
-	uint8_t log=255;
 	
-	s=_event.write(((transportSpecific & 0xFF) <<4)|((type & 0xFF) <<0));//send transportSpecific & type
-	//Serial.println(s);
-	_event.write(((reserved & 0xFF) <<4)|((version & 0xFF) <<0));
+	
+	buffer_out[0] = transport_type;
+	buffer_out[1]=reserved_version;
+	buffer_out[2]=((length>>8) & 0xFF);
+	buffer_out[3]=((length>>0) & 0xFF);
+	buffer_out[4]=domain;
+	buffer_out[5]=reserved1;
+	buffer_out[6]=((flags>>8) & 0xFF);
+	buffer_out[7]=((flags>>0) & 0xFF);
+	buffer_out[8]=((seqid >> 8) & 0xFF);
+	buffer_out[9]=((seqid >> 0) & 0xFF);
+	buffer_out[10]=control;
+	buffer_out[11]=log;
+	//	uint8_t control=255;
+	//	uint8_t log=0xAB;
+	
+	
+	//Serial.print(((transportSpecific & 0xFF) <<4)|((type & 0xFF) <<0));
 	//Serial.println(s);
 	
 	//Serial.println(s);
-	s=_event.write((length>>8) & 0xFF); //send length of msg
+	
+	//Serial.println(s);
+	/*s=_event.write((length>>8) & 0xFF); //send length of msg
 	//Serial.println(s);
 	s=_event.write((length>>0) & 0xFF); //send domain
 	//Serial.println(s);
     s=_event.write(domain);//send control type
-	//Serial.println(s);
+	//Serial.println(s); 
 	_event.write(reserved1);
 	s=_event.write((flags>>8) & 0xFF); //send length of msg
 	//Serial.println(s);
@@ -547,12 +569,14 @@ void ArduinoPTP::packMsg() {
 	_event.write((sourceportid_low >> 0) & 0xFF);
 	
 	_event.write((seqid >> 8) & 0xFF);
-	_event.write((seqid >> 0) & 0xFF);
+	_event.write((seqid >> 0) & 0xFF);*/
 	
-	_event.write(control);
-	_event.write(log);
+	s=_event.write(buffer_out, 7);
+//	Serial.println(s);
+//  s=_event.write(log);
+//	Serial.println(s);
 	
-	_event.write((seconds_high >> 24) & 0xFF);
+	/*_event.write((seconds_high >> 24) & 0xFF);
 	_event.write((seconds_high >> 16) & 0xFF);
 	_event.write((seconds_high >> 8) & 0xFF);
 	_event.write((seconds_high >> 0) & 0xFF);
@@ -562,7 +586,15 @@ void ArduinoPTP::packMsg() {
 	_event.write((nanoseconds >> 24) & 0xFF);
 	_event.write((nanoseconds >> 16) & 0xFF);
 	_event.write((nanoseconds >> 8) & 0xFF);
-	_event.write((nanoseconds >> 0) & 0xFF);
+	_event.write((nanoseconds >> 0) & 0xFF);*/
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	
