@@ -485,37 +485,58 @@ void ArduinoPTP::packMsg() {
 	//Serial.println(buffer_out[0]);
 	
 	const uint8_t transportSpecific = 11;
-	const uint8_t type = 11;
+	const uint8_t type = 0x1;
 	const uint8_t reserved =11;
 	const uint8_t version=11;
 	const uint16_t length=0xABCD;//length of packet
 	const uint8_t domain=255;//domain of clocks
 	const uint8_t reserved1=255;
-	const uint16_t flags = 0xABCD;
+	const uint16_t flags = 0x0000;
 	const uint16_t seqid=0xEFAB;//sequence ID
-	const uint8_t transport_type= ((transportSpecific & 0xF) <<4)|((type & 0xF) <<0); //transportSpecific & type byte
+	const uint8_t transport_type= ((PTPMsg.transportSpecific & 0xF) <<4)|((type & 0xF) <<0); //transportSpecific & type byte
 	const uint8_t reserved_version=((reserved & 0xFF) <<4)|((version & 0xFF) <<0); // version number byte
 	const uint8_t control=0xef;//type of message
 	const uint8_t log=0xac;
 	
 	const uint32_t reserved2=0x01234567;
-	const uint32_t sourceportid_high1=0x01234567;
-	const uint32_t sourceportid_high2=0x89ABCDEF;
-	const uint16_t sourceportid_low=0xABCD;
+	//const uint32_t sourceportid_high1=0x01234567;
+	//const uint32_t sourceportid_high2=0x89ABCDEF;
+	//const uint16_t sourceportid_low=0xABCD;
+	const uint16_t sourceportid_delay=0x0002;
 	
 	
-	buffer_out[0] = transport_type;
-	buffer_out[1]=reserved_version;
-	buffer_out[2]=((length>>8) & 0xFF);
-	buffer_out[3]=((length>>0) & 0xFF);
-	buffer_out[4]=domain;
+	buffer_out[0] = transport_type;//transport_type;
+	buffer_out[1]=PTPMsg.version;//reserved_version;
+	buffer_out[2]=((PTPMsg.length>>8) & 0xFF);
+	buffer_out[3]=((PTPMsg.length>>0) & 0xFF);
+	buffer_out[4]=PTPMsg.domain;
 	buffer_out[5]=reserved1;
 	buffer_out[6]=((flags>>8) & 0xFF);
 	buffer_out[7]=((flags>>0) & 0xFF);
-	buffer_out[8]=((seqid >> 8) & 0xFF);
-	buffer_out[9]=((seqid >> 0) & 0xFF);
-	buffer_out[10]=control;
-	buffer_out[11]=log;
+	buffer_out[8]=((PTPMsg.correction>>56) & 0xFF);
+	buffer_out[9]=((PTPMsg.correction>>48) & 0xFF);
+	buffer_out[10]=((PTPMsg.correction>>40) & 0xFF);
+	buffer_out[11]=((PTPMsg.correction>>32) & 0xFF);
+	buffer_out[12]=((PTPMsg.correction>>24) & 0xFF);
+	buffer_out[13]=((PTPMsg.correction>>16) & 0xFF);
+	buffer_out[14]=((PTPMsg.correction>>8) & 0xFF);
+	buffer_out[15]=((PTPMsg.correction>>0) & 0xFF);
+	buffer_out[16]=((reserved2>>24) & 0xFF);
+	buffer_out[17]=((reserved2>>16) & 0xFF);
+	buffer_out[18]=((reserved2>>8) & 0xFF);
+	buffer_out[19]=((reserved2>>0) & 0xFF);
+	k=20;
+	for(i=0;i<8;i++)
+	{
+	buffer_out[k]=PTPMsg.clockID[i];
+	k++;
+	}
+	
+	
+	buffer_out[28]=((sourceportid_delay >> 8) & 0xFF);
+	buffer_out[29]=((sourceportid_delay >> 0) & 0xFF);
+	//buffer_out[10]=control;
+	//buffer_out[11]=log;
 	//	uint8_t control=255;
 	//	uint8_t log=0xAB;
 	
@@ -571,7 +592,7 @@ void ArduinoPTP::packMsg() {
 	_event.write((seqid >> 8) & 0xFF);
 	_event.write((seqid >> 0) & 0xFF);*/
 	
-	s=_event.write(buffer_out, 7);
+	s=_event.write(buffer_out, 30);
 //	Serial.println(s);
 //  s=_event.write(log);
 //	Serial.println(s);
