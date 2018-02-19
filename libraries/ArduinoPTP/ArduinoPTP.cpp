@@ -14,6 +14,7 @@ int globalCountgeneral = 0; //keep track of number of general packets.
 int globalCountevent = 0; //keep track of number of event packets.
 int k=0; 
 int i=0;
+int sequence_id_delay=0;
 //char timestamp[6];
 //IPAddress ip(192,168,1,177);
 IPAddress remoteIP;
@@ -475,6 +476,7 @@ void ArduinoPTP::packMsg() {
 	remoteIP=IPAddress(128,146,32,245);
 	//Serial.println(remotePort);
 //	remotePort=0xC0BF;
+
 	if (globalCountevent%10==0)
 	{
 	//Serial.print("Remote IP:");
@@ -484,25 +486,31 @@ void ArduinoPTP::packMsg() {
 	//buffer_out[0]=PTPMsg.version;
 	//Serial.println(buffer_out[0]);
 	
-	const uint8_t transportSpecific = 11;
+	sequence_id_delay++;
+	//const uint8_t transportSpecific = 11;
 	const uint8_t type = 0x1;
-	const uint8_t reserved =11;
-	const uint8_t version=11;
-	const uint16_t length=0xABCD;//length of packet
-	const uint8_t domain=255;//domain of clocks
+	//const uint8_t reserved =11;
+	//const uint8_t version=11;
+	//const uint16_t length=0xABCD;//length of packet
+	//const uint8_t domain=255;//domain of clocks
 	const uint8_t reserved1=255;
 	const uint16_t flags = 0x0000;
-	const uint16_t seqid=0xEFAB;//sequence ID
+	//const uint16_t seqid=0xEFAB;//sequence ID
 	const uint8_t transport_type= ((PTPMsg.transportSpecific & 0xF) <<4)|((type & 0xF) <<0); //transportSpecific & type byte
-	const uint8_t reserved_version=((reserved & 0xFF) <<4)|((version & 0xFF) <<0); // version number byte
-	const uint8_t control=0xef;//type of message
-	const uint8_t log=0xac;
+	//const uint8_t reserved_version=((reserved & 0xFF) <<4)|((version & 0xFF) <<0); // version number byte
+	const uint8_t control_delay=0x01;//type of message
+	const uint8_t log_delay=127;
 	
 	const uint32_t reserved2=0x01234567;
 	//const uint32_t sourceportid_high1=0x01234567;
 	//const uint32_t sourceportid_high2=0x89ABCDEF;
 	//const uint16_t sourceportid_low=0xABCD;
 	const uint16_t sourceportid_delay=0x0002;
+	const uint64_t timestamp_delay_sec=0x00005a86f62b;
+	const uint32_t timestamp_delay_nano=0x0ceb8b24;
+	
+    
+	
 	
 	
 	buffer_out[0] = transport_type;//transport_type;
@@ -535,6 +543,23 @@ void ArduinoPTP::packMsg() {
 	
 	buffer_out[28]=((sourceportid_delay >> 8) & 0xFF);
 	buffer_out[29]=((sourceportid_delay >> 0) & 0xFF);
+	buffer_out[30]=((sequence_id_delay >> 8) & 0xFF);
+	buffer_out[31]=((sequence_id_delay >> 0) & 0xFF);
+	buffer_out[32]=control_delay;
+	buffer_out[33]=log_delay;
+	buffer_out[34]=((timestamp_delay_sec >> 40) & 0xFF);
+	buffer_out[35]=((timestamp_delay_sec >> 32) & 0xFF);
+	buffer_out[36]=((timestamp_delay_sec >> 24) & 0xFF);
+	buffer_out[37]=((timestamp_delay_sec >> 16) & 0xFF);
+	buffer_out[38]=((timestamp_delay_sec >> 8) & 0xFF);
+	buffer_out[39]=((timestamp_delay_sec >> 0) & 0xFF);
+	buffer_out[40]=((timestamp_delay_nano >> 24) & 0xFF);
+	buffer_out[41]=((timestamp_delay_nano >> 16) & 0xFF);
+	buffer_out[42]=((timestamp_delay_nano >> 8) & 0xFF);
+	buffer_out[43]=((timestamp_delay_nano >> 0) & 0xFF);
+	
+	
+	
 	//buffer_out[10]=control;
 	//buffer_out[11]=log;
 	//	uint8_t control=255;
@@ -592,7 +617,7 @@ void ArduinoPTP::packMsg() {
 	_event.write((seqid >> 8) & 0xFF);
 	_event.write((seqid >> 0) & 0xFF);*/
 	
-	s=_event.write(buffer_out, 30);
+	s=_event.write(buffer_out, 44);
 //	Serial.println(s);
 //  s=_event.write(log);
 //	Serial.println(s);
