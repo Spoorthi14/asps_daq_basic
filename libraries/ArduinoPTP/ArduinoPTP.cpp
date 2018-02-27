@@ -17,12 +17,35 @@ void ArduinoPTP::handle() {
 		// Do something to handle general packets.
 	}
 	packetSize = _event.parsePacket();
-	if  (packetSize && !npackets) {
+	if  (packetSize && npackets>=0) {
 		npackets++;
-		if (npackets == 10) npackets = 0;
+		if (npackets == 10) 
+		{
+			npackets = 0;
 		Serial.print("PTP event: ");
 		Serial.print(_event.getSeconds());
 		Serial.print(".");
-		Serial.print(_event.getNanoseconds());
+		Serial.println(_event.getNanoseconds());
+		
+		uint16_t remotePort=_event.remotePort();
+        IPAddress remoteIP=IPAddress(128,146,32,245);
+		
+		_event.beginPacket(remoteIP,remotePort);
+		//Serial.println(_event.getTxTimestamp());
+		
+		uint8_t byte1=0xab;
+		_event.write(byte1);
+		while (!tivaTxTimestampDone) {}
+		Serial.println(tivaTxTimestampDone);
+		Serial.print("PTP delay event:");
+		Serial.print(_event.getTxTimestampHi());
+		Serial.print(".");
+		Serial.println(_event.getTxTimestampLo());
+		
+		_event.endPacket();
+		_event.setTxTimestamp(true);
+	
+		
+		}
 	}
 }
