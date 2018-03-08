@@ -23,28 +23,39 @@ void ArduinoPTP::handle() {
 		{
 			npackets = 0;
 		Serial.print("PTP event: ");
-		Serial.print(_event.getSeconds());
+	Serial.print(_event.getSeconds());
 		Serial.print(".");
 		Serial.println(_event.getNanoseconds());
 		
 		uint16_t remotePort=_event.remotePort();
-        IPAddress remoteIP=IPAddress(128,146,32,245);
+        IPAddress remoteIP=IPAddress(128,146,33,30);
 		
-		_event.beginPacket(remoteIP,remotePort);
-		//Serial.println(_event.getTxTimestamp());
+		//Serial.print("packets: ");
+		//Serial.println(tivaPacketCount);
 		
+		int b=_event.beginPacket(remoteIP,remotePort);	
+		//Serial.print("begin packet:");
+		//Serial.println(b);
 		uint8_t byte1=0xab;
 		_event.write(byte1);
-		while (!tivaTxTimestampDone) {}
-		Serial.println(tivaTxTimestampDone);
+		_event.setTxTimestamp(true);
+		//Serial.println(_event.getTxTimestamp());
+		_event.endPacket();
+		
+		//Serial.print("packets: ");
+		//Serial.println(tivaPacketCount);
+		
+		Serial.print("timestamp info: ");
+		Serial.print(tivaTxTimestampDone);
+		Serial.print(" ");
+		Serial.print(tivaSetTimestamp);
+		Serial.print(" ");
+		Serial.println(tivaNumChained);
+
 		Serial.print("PTP delay event:");
 		Serial.print(_event.getTxTimestampHi());
 		Serial.print(".");
 		Serial.println(_event.getTxTimestampLo());
-		
-		_event.endPacket();
-		_event.setTxTimestamp(true);
-	
 		
 		}
 	}
