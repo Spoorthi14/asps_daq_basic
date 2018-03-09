@@ -7,14 +7,22 @@
  
  #include <EthernetUdpTimestamped.h>
  #include "lwip/pbuf.h"
+
  
 class ArduinoPTP {
 public:
-	ArduinoPTP() {}
+    ArduinoPTP() {}
 	uint8_t begin();
 	void stop();
 	void handle();
+	void checkState();
+//	typedef enum state{} ptpState_t;
+  //  void changeState(state new_state);
+	
+	
 private:
+   // EthernetUDP _general_packet;
+ //   EthernetUDP _event_packet;
 	EthernetUDPTimestamped _general;
 	EthernetUDPTimestamped _event;
 };
