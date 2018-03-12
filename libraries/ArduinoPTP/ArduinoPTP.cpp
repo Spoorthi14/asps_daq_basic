@@ -114,7 +114,12 @@ void ArduinoPTP::handle() {
 	//	}
 //	}
 }
-
+ uint8_t clockID[8];
+ uint32_t t0_prime_seconds;
+ uint32_t t0_prime_nanoseconds;
+ //int i=0;
+ //int k=0;
+ //int check_clock=0;
 void ArduinoPTP::checkState()
 {
 	
@@ -124,7 +129,7 @@ void ArduinoPTP::checkState()
 		 packetSize = _event.parsePacket();
 		 if (_general.parsePacket())
 		 {
-			 packetByte = _general.read(buffer,2);
+			 packetByte = _general.read(buffer,30);
 			 //Serial.println(packetByte);
 			unsigned int transportSpecific= (buffer[0]>>4)& 0xF;
             unsigned int type=(buffer[0])& 0xF;
@@ -135,24 +140,106 @@ void ArduinoPTP::checkState()
 			// Serial.println(buffer[0]);
 			 if((type)==11)
 			 {
-				 Serial.println("Announce message");
+				 // We have an announce message.
+				 Serial.println("Found an announce message");
+				// Serial.println("Announce message");
+				 // memcpy
+				// for(k=20;k<28;k++)
+				// {
+					// clockID[i]=buffer[k];
+					 //Serial.print(clockID[i],HEX);
+                   //  i++;
+				 //}
+				 memcpy(clockID,buffer + 20,8);
 				 
 				 pstate=PTP_SYNC_WAIT;
-				 checkState();
+				 Serial.println("Switching to sync mode");
+				 //checkState();
+				 return;
+			 } else {
+				// This packet wasn't an announce message.
+				// Do nothing.
+				return;
 			 }
+		 } else {
+			 // No packet. Do nothing.
+			 return;
 		 }
-		 break;
 		 
-		 case PTP_SYNC_WAIT:
-        // if (PTPMsg.control==0)
-		 //{
-			// uint64_t t0_sec=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
-			// uint32_t t0_nanosec=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
-		 //}			 
-		 break; 
+		case PTP_SYNC_WAIT:
+		_general.parsePacket();
+		if (_event.parsePacket()) {
+			// i=0;
+			Serial.println("Found a sync message");
+			memset(buffer,0,sizeof(buffer));
+			//Serial.println(sizeof(buffer));
+			//Serial.println("Working");
+			packetByte = _event.read(buffer,30);
+			//Serial.println(packetByte);
+			//Serial.println(sizeof(buffer));
+			// memcmp
+			//for(k=20;k<28;k++)
+			//{
+				//if (buffer[k]==clockID[i]) 
+				//{
+					if(!memcmp(clockID,buffer + 20,8))
+					{
+					//check_clock++; 
+					//Serial.print(buffer[k],HEX);
+					//} 
+					//i++;
+			//}
+			//Serial.println("Working");
+			//if (check_clock==8)
+			//{
+				//Serial.println("Sync clock verified.");
+				Serial.println("Getting timestamps");
+				t0_prime_seconds = _event.getSeconds();
+		        t0_prime_nanoseconds=_event.getNanoseconds();
+				
+			}
+				
+			//}
+			pstate=PTP_FOLLOW_UP_WAIT;
+			Serial.println("Changing state to follow up");
+			return;
+			// if (PTPMsg.control==0)
+			 //{
+				// uint64_t t0_sec=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+				// uint32_t t0_nanosec=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+			 //}
+		} else return;
 		 
 		 case PTP_FOLLOW_UP_WAIT:
-		 break;
+		 _event.parsePacket();
+		  if (_general.parsePacket())
+		  {
+			  Serial.println("general packet received");
+			  memset(buffer,0,sizeof(buffer));
+			  packetByte = _general.read(buffer,44);
+			  uint8_t control=buffer[32] &0xF;
+			  Serial.println(control);
+			 
+			  
+			  if (control==2)
+			  {
+				   Serial.println("The general packet is a follow-up");
+				   pstate=PTP_DELAY_RESPONSE_WAIT;
+				   return;
+			  }
+			  
+			  else
+			  {
+				  return;
+			  }
+			  
+			  
+			  
+			 
+		  }
+		 else {
+			 return;
+		 }
 		 
 		 case PTP_DELAY_RESPONSE_WAIT:
 		 break;
