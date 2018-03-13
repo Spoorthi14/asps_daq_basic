@@ -16,6 +16,7 @@ public:
 	void stop();
 	void handle();
 	void checkState();
+	uint8_t buffer_out[44];
 //	typedef enum state{} ptpState_t;
   //  void changeState(state new_state);
 	
