@@ -123,19 +123,20 @@ void ArduinoPTP::handle() {
  uint32_t t0_nanoseconds;
  char timestamp[6];
  uint8_t control;
- uint16_t sequenceID;
+ uint16_t sequenceID_sync;
+ uint16_t sequenceID_follow_up;
  uint16_t sequenceID_Delay=0;
  uint32_t t1_prime_seconds;
  uint32_t t1_prime_nanoseconds;
- 
+ uint16_t sequenceID_Delay_response;
  
  //int i=0;
  //int k=0;
- //int check_clock=0;
+ //int check_clock=0
 void ArduinoPTP::checkState()
 {
 	uint16_t remotePort=_event.remotePort();
-	IPAddress remoteIP=IPAddress(128,146,33,30);
+	IPAddress remoteIP=/*IPAddress(128,146,33,30)*/ _event.remoteIP();
 	 switch(pstate)
 	 {
 		 case PTP_ANNOUNCE_WAIT:
@@ -187,7 +188,7 @@ void ArduinoPTP::checkState()
 			memset(buffer,0,sizeof(buffer));
 			//Serial.println(sizeof(buffer));
 			//Serial.println("Working");
-			packetByte = _event.read(buffer,30);
+			packetByte = _event.read(buffer,44);
 			//Serial.println(packetByte);
 			//Serial.println(sizeof(buffer));
 			// memcmp
@@ -215,8 +216,9 @@ void ArduinoPTP::checkState()
 				  // itoa(t0_seconds,timestamp,10);
 				  // Serial.println(timestamp);
 				  // Serial.println(t0_nanoseconds);
-				  // sequenceID=(buffer[30] << 8) | buffer[31];
-				   //Serial.println(sequenceID);
+				  sequenceID_sync=(buffer[30] << 8) | buffer[31];
+				  Serial.print("Sync ID ");
+				  Serial.println(sequenceID_sync);
 				
 			}
 				
@@ -240,7 +242,7 @@ void ArduinoPTP::checkState()
 			  memset(buffer,0,sizeof(buffer));
 			  packetByte = _general.read(buffer,44);
 			  control=buffer[32] &0xF;
-			  Serial.println(control);
+			  //Serial.println(control);
 			 
 			  
 			  if ((!(memcmp(clockID1,buffer + 20,8))) && (control==2)) 
@@ -252,8 +254,9 @@ void ArduinoPTP::checkState()
 				  // itoa(t0_seconds,timestamp,10);
 				  // Serial.println(timestamp);
 				 //  Serial.println(t0_nanoseconds);
-				//   sequenceID=(buffer[30] << 8) | buffer[31];
-				 //  Serial.println(sequenceID);
+				   sequenceID_follow_up=(buffer[30] << 8) | buffer[31];
+				  Serial.print("Follow-up ID ");
+				   Serial.println(sequenceID_follow_up);
 				   //pstate=PTP_DELAY_RESPONSE_WAIT;
 				   //return;
 				   pstate=PTP_SEND_DELAY_REQ;
@@ -301,6 +304,9 @@ void ArduinoPTP::checkState()
 		 }*/
 		 
 		 case PTP_SEND_DELAY_REQ:
+		// Serial.println(remoteIP);
+	//	for(int i=0;i<3;i++)
+		//{
 		 _event.beginPacket(remoteIP,remotePort); 
 		 sequenceID_Delay++;
 		 buffer_out[0]=(((0x0 & 0xF)<<4)|((0x1 & 0xF) <<0));
@@ -338,8 +344,11 @@ void ArduinoPTP::checkState()
 		 buffer_out[32]=0x01;
 		 buffer_out[33]=127;
 		 _event.setTxTimestamp(true);
+		 Serial.println("Getting timestamps");
 		 t1_prime_seconds=_event.getTxTimestampHi();
 		 t1_prime_nanoseconds=_event.getTxTimestampLo();
+		 //Serial.println(t1_prime_seconds);
+		// Serial.println(t1_prime_nanoseconds);
 		 buffer_out[34]==((t1_prime_seconds >> 40) & 0xFF);
 		 buffer_out[35]=((t1_prime_seconds >> 32) & 0xFF);
 		 buffer_out[36]=((t1_prime_seconds >> 24) & 0xFF);
@@ -353,11 +362,67 @@ void ArduinoPTP::checkState()
 		 _event.write(buffer_out,44);
 		 
 		 _event.endPacket();
+		 //return;
+		 //Serial.println(tivaTxTimestampDone);
+		 Serial.print("Delay request ID ");
+		Serial.println(sequenceID_Delay);
+		 if (tivaTxTimestampDone)
+		 {
+			 Serial.println("tivaTxTimestampDone is true");
+			 //Serial.println(t1_prime_seconds);
+		     //Serial.println(t1_prime_nanoseconds);
+			 
+			 
 		 pstate=PTP_DELAY_RESPONSE_WAIT;
 		 return;
+		 }
+		 else{
+			 Serial.println("tivaTxTimestampDone is false");
+			 pstate=PTP_SYNC_WAIT;
+			// pstate=PTP_DELAY_RESPONSE_WAIT;
+			 return;
+		 }
+	//	}
+		 //pstate=PTP_DELAY_RESPONSE_WAIT;
+		 //return;
 		 
 		 case PTP_DELAY_RESPONSE_WAIT:
-		 break;
+		 ptpState_t PTP_END;
+		 _event.parsePacket();
+		 if(_general.parsePacket())
+		 {
+			 Serial.println("general packet received");
+			  memset(buffer,0,sizeof(buffer));
+			  packetByte = _general.read(buffer,44);
+			  control=buffer[32] &0xF;
+			  sequenceID_Delay_response=(buffer[30] << 8) | buffer[31];
+			  
+			 // Serial.println(control);
+			  
+			 // Serial.println(sequenceID_Delay);
+			Serial.print("Delay response ID ");
+			Serial.println(sequenceID_Delay_response);
+			  
+			  if (control==3 && sequenceID_Delay==sequenceID_Delay_response)
+			  {
+				 // Serial.println("delay response packet received"); 
+				  //Serial.println((buffer[30] << 8) | buffer[31]);
+				  if(sequenceID_follow_up==sequenceID_sync)
+				  {
+				  Serial.println(sequenceID_Delay);
+				  Serial.println(sequenceID_Delay_response);
+				  Serial.println(sequenceID_follow_up);
+				  Serial.println(sequenceID_sync);
+				  }
+				  pstate=PTP_END;
+			  }
+		 }
+		 else 
+		 
+	     return;
+		 
+		 default:
+		 return;
 	 }
 }
 
