@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+//using namespace std;
 
 /*typedef struct _PTPMsg {
 		uint16_t sourcePortID;
@@ -28,7 +29,9 @@ typedef enum state {
 	
 	PTP_ANNOUNCE_WAIT,
 	
-	PTP_SEND_DELAY_REQ
+	PTP_SEND_DELAY_REQ,
+	
+	PTP_TIMESTAMPS
 	
 } ptpState_t;
 char buffer[100];
@@ -122,12 +125,15 @@ void ArduinoPTP::handle() {
  uint64_t t0_seconds;
  uint32_t t0_nanoseconds;
  char timestamp[6];
+ char timestamp1[6];
  uint8_t control;
  uint16_t sequenceID_sync;
  uint16_t sequenceID_follow_up;
  uint16_t sequenceID_Delay=0;
  uint32_t t1_prime_seconds;
  uint32_t t1_prime_nanoseconds;
+ uint64_t t1_seconds;
+ uint32_t t1_nanoseconds;
  uint16_t sequenceID_Delay_response;
  
  //int i=0;
@@ -155,7 +161,7 @@ void ArduinoPTP::checkState()
 			 if((type)==11)
 			 {
 				 // We have an announce message.
-				 Serial.println("Found an announce message");
+				 Serial.println("Got an announce message");
 				// Serial.println("Announce message");
 				 // memcpy
 				// for(k=20;k<28;k++)
@@ -168,7 +174,7 @@ void ArduinoPTP::checkState()
 				 memcpy(clockID1,buffer + 20,8);
 				 
 				 pstate=PTP_SYNC_WAIT;
-				 Serial.println("Switching to sync mode");
+				 //Serial.println("Switching to sync mode");
 				 //checkState();
 				 return;
 			 } else {
@@ -184,7 +190,7 @@ void ArduinoPTP::checkState()
 		case PTP_SYNC_WAIT:
 		if (_event.parsePacket()) {
 			// i=0;
-			Serial.println("Found a sync message");
+			Serial.println("got a sync message");
 			memset(buffer,0,sizeof(buffer));
 			//Serial.println(sizeof(buffer));
 			//Serial.println("Working");
@@ -207,7 +213,7 @@ void ArduinoPTP::checkState()
 			//if (check_clock==8)
 			//{
 				//Serial.println("Sync clock verified.");
-				Serial.println("Getting timestamps");
+				//Serial.println("Getting timestamps");
 				t0_prime_seconds = _event.getSeconds();
 		        t0_prime_nanoseconds=_event.getNanoseconds();
 				
@@ -217,14 +223,14 @@ void ArduinoPTP::checkState()
 				  // Serial.println(timestamp);
 				  // Serial.println(t0_nanoseconds);
 				  sequenceID_sync=(buffer[30] << 8) | buffer[31];
-				  Serial.print("Sync ID ");
-				  Serial.println(sequenceID_sync);
+				  //Serial.print("Sync ID ");
+				  //Serial.println(sequenceID_sync);
 				
 			}
 				
 			//}
 		//	pstate=PTP_DELAY_RESPONSE_WAIT;
-			Serial.println("Changing state to follow up");
+			//Serial.println("Changing state to follow up");
 			//return;
 			// if (PTPMsg.control==0)
 			 //{
@@ -248,19 +254,19 @@ void ArduinoPTP::checkState()
 			  if ((!(memcmp(clockID1,buffer + 20,8))) && (control==2)) 
 			  {
 				   Serial.println("The general packet is a follow-up");
-				   Serial.println("Getting timestamps");
+				   //Serial.println("Getting timestamps");
 				   t0_seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
 				   t0_nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
-				  // itoa(t0_seconds,timestamp,10);
+				  itoa(t0_seconds,timestamp,10);
 				  // Serial.println(timestamp);
 				 //  Serial.println(t0_nanoseconds);
 				   sequenceID_follow_up=(buffer[30] << 8) | buffer[31];
-				  Serial.print("Follow-up ID ");
-				   Serial.println(sequenceID_follow_up);
+				  //Serial.print("Follow-up ID ");
+				   //Serial.println(sequenceID_follow_up);
 				   //pstate=PTP_DELAY_RESPONSE_WAIT;
 				   //return;
 				   pstate=PTP_SEND_DELAY_REQ;
-				   Serial.println("Switching to delay request mode");
+				   //Serial.println("Switching to delay request mode");
 			       
 			  }
 			  return;
@@ -344,7 +350,7 @@ void ArduinoPTP::checkState()
 		 buffer_out[32]=0x01;
 		 buffer_out[33]=127;
 		 _event.setTxTimestamp(true);
-		 Serial.println("Getting timestamps");
+		 //Serial.println("Getting timestamps");
 		 t1_prime_seconds=_event.getTxTimestampHi();
 		 t1_prime_nanoseconds=_event.getTxTimestampLo();
 		 //Serial.println(t1_prime_seconds);
@@ -364,11 +370,13 @@ void ArduinoPTP::checkState()
 		 _event.endPacket();
 		 //return;
 		 //Serial.println(tivaTxTimestampDone);
-		 Serial.print("Delay request ID ");
-		Serial.println(sequenceID_Delay);
+		// Serial.print("Delay request ID ");
+		//Serial.println(sequenceID_Delay);
+		
+		//Do nothing before this!!
 		 if (tivaTxTimestampDone)
 		 {
-			 Serial.println("tivaTxTimestampDone is true");
+			 //Serial.println("tivaTxTimestampDone is true");
 			 //Serial.println(t1_prime_seconds);
 		     //Serial.println(t1_prime_nanoseconds);
 			 
@@ -377,7 +385,7 @@ void ArduinoPTP::checkState()
 		 return;
 		 }
 		 else{
-			 Serial.println("tivaTxTimestampDone is false");
+			 //Serial.println("tivaTxTimestampDone is false");
 			 pstate=PTP_SYNC_WAIT;
 			// pstate=PTP_DELAY_RESPONSE_WAIT;
 			 return;
@@ -387,7 +395,7 @@ void ArduinoPTP::checkState()
 		 //return;
 		 
 		 case PTP_DELAY_RESPONSE_WAIT:
-		 ptpState_t PTP_END;
+		// ptpState_t PTP_END;
 		 _event.parsePacket();
 		 if(_general.parsePacket())
 		 {
@@ -396,31 +404,90 @@ void ArduinoPTP::checkState()
 			  packetByte = _general.read(buffer,44);
 			  control=buffer[32] &0xF;
 			  sequenceID_Delay_response=(buffer[30] << 8) | buffer[31];
+			 // t1_seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+			  //t1_nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+			 // itoa(t1_seconds,timestamp1,10);
 			  
 			 // Serial.println(control);
 			  
 			 // Serial.println(sequenceID_Delay);
-			Serial.print("Delay response ID ");
-			Serial.println(sequenceID_Delay_response);
+			
 			  
-			  if (control==3 && sequenceID_Delay==sequenceID_Delay_response)
+			  if (control==3)
 			  {
+				  //Serial.print("Delay response ID ");
+			      //Serial.println(sequenceID_Delay_response);
+				  Serial.println("the message is a delay response");
+				  if(sequenceID_Delay==sequenceID_Delay_response)
+				  {
+					  Serial.println("the delay IDs match up");
+					  
+					  //Serial.println(t1_seconds);
+					  //Serial.println(t1_nanoseconds);
+				  if(sequenceID_follow_up==sequenceID_sync)
+				  {
+					  Serial.println("the sync and follow-up IDs match up");
+					  Serial.println("Get all the timestamps here!");
+					  pstate=PTP_TIMESTAMPS;
+					  return;
+					  //FILE *fp;
+					 // fp = fopen("C:/Users/ara/Documents/PTP Timestamps.txt","w");
+					  //int fclose(FILE *fp);
+					  //return ;
+					  
+					 //t1_seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+			  // t1_nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+			  // itoa(t1_seconds,timestamp1,10);
+					 /*Serial.print(timestamp);
+					  Serial.print("   ");
+					  Serial.print(t0_nanoseconds);
+					  Serial.print("   ");
+					  Serial.print(t0_prime_seconds);
+					  Serial.print("   ");
+					  Serial.print(t0_prime_nanoseconds);
+					  Serial.print("   ");
+					  Serial.print(t1_prime_seconds);
+					  Serial.print("   ");
+					  Serial.println(t1_prime_nanoseconds);
+					  /*Serial.print("   ");
+					  Serial.print(timestamp1);
+					  Serial.print("   ");
+					  Serial.println(t1_nanoseconds);*/
+					  
+				  }
+				  
+				  //Serial.print("Delay response ID ");
+			      //Serial.println(sequenceID_Delay_response);
 				 // Serial.println("delay response packet received"); 
 				  //Serial.println((buffer[30] << 8) | buffer[31]);
-				  if(sequenceID_follow_up==sequenceID_sync)
+				 /* if(sequenceID_follow_up==sequenceID_sync)
 				  {
 				  Serial.println(sequenceID_Delay);
 				  Serial.println(sequenceID_Delay_response);
 				  Serial.println(sequenceID_follow_up);
 				  Serial.println(sequenceID_sync);
+				  }*/
+				 pstate=PTP_SYNC_WAIT;
 				  }
-				  pstate=PTP_END;
 			  }
+			  return;
 		 }
 		 else 
 		 
 	     return;
 		 
+		 case PTP_TIMESTAMPS:
+		 t1_seconds=(buffer[34] << 40) | (buffer[35] << 32) | (buffer[36] << 24) | (buffer[37] << 16) | (buffer[38] << 8) | (buffer[39]);
+	     t1_nanoseconds=(buffer[40] << 24) | (buffer[41] << 16) |(buffer[42] << 8) | buffer[43];
+		 //itoa(t1_seconds,timestamp1,10);
+		 Serial.println("PTP TIMESTAMPS");
+		 //Serial.println(timestamp);
+		 //Serial.print("   ");
+		 Serial.println(t0_nanoseconds);
+		 Serial.println(t0_prime_seconds);
+		 Serial.println(t0_prime_nanoseconds);
+		 pstate=PTP_SYNC_WAIT;
+		 return;
 		 default:
 		 return;
 	 }
