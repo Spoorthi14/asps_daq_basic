@@ -253,7 +253,7 @@ void ArduinoPTP::checkState()
 		}
 		if(_general.parsePacket())
 		{
-			Serial.println("general packet received");
+			 Serial.println("general packet received");
 			  memset(buffer,0,sizeof(buffer));
 			  packetByte = _general.read(buffer,44);
 			  control=buffer[32] &0xF;
@@ -367,25 +367,26 @@ void ArduinoPTP::checkState()
 		 buffer_out[33]=127;
 		 _event.setTxTimestamp(true);
 		 //Serial.println("Getting timestamps");
-		 t1_prime_seconds=_event.getTxTimestampHi();
-		 t1_prime_nanoseconds=_event.getTxTimestampLo();
+		 //t1_prime_seconds=_event.getTxTimestampHi();
+		 //t1_prime_nanoseconds=_event.getTxTimestampLo();
 		 //Serial.println(t1_prime_seconds);
 		// Serial.println(t1_prime_nanoseconds);
-		 buffer_out[34]==((t1_prime_seconds >> 40) & 0xFF);
-		 buffer_out[35]=((t1_prime_seconds >> 32) & 0xFF);
-		 buffer_out[36]=((t1_prime_seconds >> 24) & 0xFF);
-		 buffer_out[37]=((t1_prime_seconds >> 16) & 0xFF);
-		 buffer_out[38]=((t1_prime_seconds >> 8) & 0xFF);
-		 buffer_out[39]=((t1_prime_seconds >> 0) & 0xFF);
-		 buffer_out[40]=((t1_prime_nanoseconds >> 24) & 0xFF);
-		 buffer_out[41]=((t1_prime_nanoseconds >> 16) & 0xFF);
-		 buffer_out[42]=((t1_prime_nanoseconds >> 8) & 0xFF);
-		 buffer_out[43]=((t1_prime_nanoseconds >> 0) & 0xFF);
+		 buffer_out[34]=0x00;//((t1_prime_seconds >> 40) & 0xFF);
+		 buffer_out[35]=0x00;//((t1_prime_seconds >> 32) & 0xFF);
+		 buffer_out[36]=0x00;//((t1_prime_seconds >> 24) & 0xFF);
+		 buffer_out[37]=0x00;//((t1_prime_seconds >> 16) & 0xFF);
+		 buffer_out[38]=0x00;//((t1_prime_seconds >> 8) & 0xFF);
+		 buffer_out[39]=0x00;//((t1_prime_seconds >> 0) & 0xFF);
+		 buffer_out[40]=0x00;//((t1_prime_nanoseconds >> 24) & 0xFF);
+		 buffer_out[41]=0x00;//((t1_prime_nanoseconds >> 16) & 0xFF);
+		 buffer_out[42]=0x00;//((t1_prime_nanoseconds >> 8) & 0xFF);
+		 buffer_out[43]=0x00;//((t1_prime_nanoseconds >> 0) & 0xFF);
 		 _event.write(buffer_out,44);
 		 
 		 _event.endPacket();
-		 t1_prime_seconds=_event.getTxTimestampHi();
-		 Serial.println(t1_prime_seconds);
+		 Serial.println(tivaTxTimestampDone);
+		t1_prime_seconds=_event.getTxTimestampHi();
+		 //Serial.println(t1_prime_seconds);
 		t1_prime_nanoseconds=_event.getTxTimestampLo();
 		//Serial.println(t1_prime_nanoseconds);
 		//Serial.println(t0_prime_seconds);
@@ -471,7 +472,7 @@ void ArduinoPTP::checkState()
 					  //Serial.println(t1_nanoseconds);
 				  if(sequenceID_follow_up==sequenceID_sync)
 				  {
-					  if(sequenceID_Delay==(sequenceID_sync))
+					  if(sequenceID_Delay_response==(sequenceID_sync))
 					  {
 					  Serial.println("the sync and follow-up IDs match up");
 					  Serial.println("Get all the timestamps here!");
